@@ -1,8 +1,24 @@
 import React, { useState } from 'react';
 import { Leaf, Activity, Brain, Heart, Sparkles, Loader2, Download, MessageCircle, ArrowRight, User, Phone } from 'lucide-react';
 
-// 1️⃣ PEGA TU CLAVE API ENTRE ESTAS COMILLAS:
 const apiKey = "AIzaSyCAePIbGCFTjvkNuJ5pK1f5F5nz-h8BXt8"; 
+
+// 1️⃣ Añadimos las "etiquetas" exactas que pide el servidor para no arrojar errores
+interface ScoreData {
+  fisica: number;
+  mental: number;
+  emocional: number;
+  espiritual: number;
+  [key: string]: number;
+}
+
+interface ResultData {
+  scores: ScoreData;
+  lowestDimension: string;
+  empatheticMessage: string;
+  fundamentalHabit: string;
+  microHabit: string;
+}
 
 export default function App() {
   const [step, setStep] = useState(1);
@@ -10,7 +26,6 @@ export default function App() {
   const [error, setError] = useState('');
   const [printMessage, setPrintMessage] = useState('');
   
-  // --- IMÁGENES DE TU MARCA ---
   const logoUrl = "https://i.postimg.cc/x1JZwGJP/logo-gratia-ia.png";
   const coverUrl = "https://i.postimg.cc/50xn28yM/diagnostico.png";
 
@@ -23,21 +38,20 @@ export default function App() {
     espiritual: ''
   });
 
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<ResultData | null>(null);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const getLabelAndColor = (score) => {
+  const getLabelAndColor = (score: number) => {
     if (score >= 4) return { label: "🌿 Equilibrio", color: "bg-green-400", text: "text-green-700" };
     if (score === 3) return { label: "⚪ Zona de ajuste", color: "bg-yellow-300", text: "text-yellow-700" };
     return { label: "🔸 Desequilibrio activo", color: "bg-red-400", text: "text-red-700" };
   };
 
   const analyzeData = async () => {
-    // Basic validation
     if (!formData.nombre || !formData.fisica || !formData.mental || !formData.emocional || !formData.espiritual) {
       setError("Por favor, déjame tu nombre y completa todos los espacios para poder guiarte mejor. 🤍");
       return;
@@ -78,7 +92,7 @@ export default function App() {
     const systemInstruction = "Eres 'Gratia', una coach de bienestar femenina, empática, serena y experta. Tu tono es dulce, comprensivo y motivador. Todo tu análisis y respuestas deben estar estrictamente en ESPAÑOL.";
 
     try {
-      if (!apiKey) throw new Error("Falta configurar la Clave de Google AI. Pega tu clave en la línea 4 del código.");
+      if (!apiKey) throw new Error("Falta configurar la Clave de Google AI.");
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
         method: 'POST',
@@ -99,12 +113,16 @@ export default function App() {
       
       if (!aiResponseText) throw new Error('Recibimos una respuesta vacía.');
 
-      const parsedResult = JSON.parse(aiResponseText);
+      const parsedResult = JSON.parse(aiResponseText) as ResultData;
       setResult(parsedResult);
       setStep(2);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Hubo un pequeño error al leer tu brújula. Por favor, intenta de nuevo en unos momentos.");
+      if (err instanceof Error) {
+        setError(err.message || "Hubo un pequeño error al leer tu brújula.");
+      } else {
+        setError("Hubo un pequeño error al leer tu brújula. Por favor, intenta de nuevo en unos momentos.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +180,6 @@ export default function App() {
           )}
 
           <div className="space-y-8">
-            {/* Campos Personales */}
             <div className="grid sm:grid-cols-2 gap-6 p-6 bg-white/40 rounded-2xl border border-white">
               <div className="space-y-2">
                 <label className="flex items-center space-x-2 text-[#B76E79] font-serif font-semibold">
@@ -188,7 +205,6 @@ export default function App() {
 
             <hr className="border-[#DBB2B2]/30" />
 
-            {/* Dimensión Física */}
             <div className="space-y-3">
               <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-xl font-semibold">
                 <Activity size={20} />
@@ -202,7 +218,6 @@ export default function App() {
               />
             </div>
 
-            {/* Dimensión Mental */}
             <div className="space-y-3">
               <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-xl font-semibold">
                 <Brain size={20} />
@@ -216,7 +231,6 @@ export default function App() {
               />
             </div>
 
-            {/* Dimensión Emocional */}
             <div className="space-y-3">
               <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-xl font-semibold">
                 <Heart size={20} />
@@ -230,7 +244,6 @@ export default function App() {
               />
             </div>
 
-            {/* Dimensión Espiritual */}
             <div className="space-y-3">
               <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-xl font-semibold">
                 <Sparkles size={20} />
@@ -276,7 +289,6 @@ export default function App() {
               <p className="text-gray-500 font-light">Este es un reflejo de tu momento presente, creado con compasión y sin juicios.</p>
             </div>
 
-            {/* Identificación del Usuario en el reporte */}
             <div className="mb-10 text-center print-break-inside-avoid">
               <div className="inline-block px-8 py-3 bg-[#F9C8C8]/20 rounded-full border border-[#DBB2B2]/30">
                 <p className="font-serif text-lg text-gray-700">
@@ -290,7 +302,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Dimension Bars */}
             <div className="grid gap-6 mb-12">
               {[
                 { key: 'fisica', label: 'Física (Tu Cuerpo)', icon: Activity },
@@ -325,7 +336,6 @@ export default function App() {
               })}
             </div>
 
-            {/* Lowest Dimension Focus Area */}
             <div className="bg-gradient-to-br from-[#fdf6f6] to-[#faebeb] border border-[#F9C8C8] rounded-3xl p-8 sm:p-10 relative overflow-hidden print-break-inside-avoid">
               <div className="absolute top-0 right-0 p-6 opacity-10 text-[#B76E79]">
                 <Leaf size={120} />
@@ -365,7 +375,6 @@ export default function App() {
             
           </div>
 
-          {/* Actions / CTA (Hidden in print) */}
           <div className="bg-white border-t border-gray-100 p-8 sm:px-12 pb-12 text-center no-print">
             <p className="text-gray-500 mb-6 text-sm">
               Descarga este resultado y envíamelo por WhatsApp para trazar tu ruta.
