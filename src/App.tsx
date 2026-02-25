@@ -120,7 +120,6 @@ export default function App() {
     try {
       if (!apiKey) throw new Error("Falta configurar la Clave de Google AI.");
 
-      // SOLUCIÓN: Cambiamos al modelo público oficial (gemini-1.5-flash)
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -134,7 +133,6 @@ export default function App() {
       });
 
       if (!response.ok) {
-        // Esto nos mostrará el error real si Google se queja de algo más
         const errorData = await response.json().catch(() => null);
         console.error("Error de la API:", errorData);
         throw new Error(errorData?.error?.message ? `Ups: ${errorData.error.message}` : 'No pudimos conectar con La Brújula. Intenta nuevamente.');
@@ -148,6 +146,23 @@ export default function App() {
       const parsedResult = JSON.parse(aiResponseText) as ResultData;
       setResult(parsedResult);
       setStep(2);
+
+      // 💌 ENVÍO DE CORREO AUTOMÁTICO A TU FORMSPREE
+      try {
+        await fetch("https://formspree.io/f/mbdaqazk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Nombre: formData.nombre,
+            Telefono: formData.telefono,
+            Dimension_Afectada: parsedResult.lowestDimension,
+            Mensaje_para_Mery: "¡Nueva usuaria completó la Brújula! Escríbele por WhatsApp. 🤍"
+          })
+        });
+      } catch (emailError) {
+        console.error("Error al enviar el correo:", emailError);
+      }
+
     } catch (err: unknown) {
       console.error(err);
       if (err instanceof Error) {
