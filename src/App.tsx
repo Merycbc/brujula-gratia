@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { Leaf, Activity, Brain, Heart, Sparkles, Loader2, Download, MessageCircle, ArrowRight, User, Phone } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Leaf, Activity, Brain, Heart, Sparkles, Loader2, Download, MessageCircle, ArrowRight, User, Phone, Pause, Music } from 'lucide-react';
 
+// Tu clave API correcta:
 const apiKey = "AIzaSyCAePIbGCFTjvkNuJ5pK1f5F5nz-h8BXt8"; 
 
-// 1️⃣ Añadimos las "etiquetas" exactas que pide el servidor para no arrojar errores
+// Canción relajante de fondo (ahora busca el archivo en tu carpeta public)
+const audioUrl = "/gratia.mp3"; 
+
 interface ScoreData {
   fisica: number;
   mental: number;
@@ -26,13 +29,29 @@ export default function App() {
   const [error, setError] = useState('');
   const [printMessage, setPrintMessage] = useState('');
   
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+  
   const logoUrl = "https://i.postimg.cc/x1JZwGJP/logo-gratia-ia.png";
   const coverUrl = "https://i.postimg.cc/50xn28yM/diagnostico.png";
 
   const [formData, setFormData] = useState({
     nombre: '',
     telefono: '',
-    fisica: '',
+    alimentacion: '',
+    descanso: '',
+    ejercicio: '',
     mental: '',
     emocional: '',
     espiritual: ''
@@ -52,7 +71,7 @@ export default function App() {
   };
 
   const analyzeData = async () => {
-    if (!formData.nombre || !formData.fisica || !formData.mental || !formData.emocional || !formData.espiritual) {
+    if (!formData.nombre || !formData.alimentacion || !formData.descanso || !formData.ejercicio || !formData.mental || !formData.emocional || !formData.espiritual) {
       setError("Por favor, déjame tu nombre y completa todos los espacios para poder guiarte mejor. 🤍");
       return;
     }
@@ -61,16 +80,23 @@ export default function App() {
     setError('');
 
     const promptText = `
-      Analiza las siguientes respuestas de una usuaria llamada "${formData.nombre}" sobre sus 4 dimensiones de bienestar:
-      1. Física: "${formData.fisica}"
-      2. Mental: "${formData.mental}"
-      3. Emocional: "${formData.emocional}"
-      4. Espiritual: "${formData.espiritual}"
+      Analiza las siguientes respuestas de una usuaria llamada "${formData.nombre}" sobre sus 4 dimensiones de bienestar. Presta especial atención a la dimensión Física, que está dividida en 3 áreas críticas:
+      1. Física (Alimentación y Energía): "${formData.alimentacion}"
+      2. Física (Descanso y Recuperación): "${formData.descanso}"
+      3. Física (Movimiento y Fuerza): "${formData.ejercicio}"
+      4. Mental: "${formData.mental}"
+      5. Emocional: "${formData.emocional}"
+      6. Espiritual: "${formData.espiritual}"
 
       Instrucciones:
-      1. Puntúa cada dimensión del 1 al 5 (1 = desequilibrio severo/malestar, 5 = equilibrio ideal/bienestar).
-      2. Identifica la dimensión con la puntuación más baja (si hay empate, elige la que percibas que necesita más atención urgente).
+      1. Puntúa cada dimensión principal del 1 al 5 (1 = desequilibrio severo, 5 = equilibrio ideal). Para la dimensión "Física", calcula una nota global basada en las respuestas de alimentación, descanso y movimiento.
+      2. Identifica la dimensión principal con la puntuación más baja (si hay empate, elige la que percibas que necesita más atención urgente).
       3. Redacta un mensaje empático, cálido y comprensivo dirigido a ${formData.nombre} sobre esa dimensión más baja.
+         IMPORTANTE: Si la dimensión más baja es la "Física", tu mensaje empático DEBE incluir una breve pero poderosa concientización sobre:
+         - El metabolismo y cómo usamos la energía (alimentación).
+         - La importancia vital del descanso profundo para la reparación celular, hormonal y del sistema nervioso.
+         - Por qué entrenar la fuerza y construir masa muscular es crucial para la longevidad y la salud metabólica, mucho más allá de la apariencia física o estética.
+         (Si la dimensión más baja NO es la física, enfoca tu mensaje en la dimensión correspondiente, pero mantén un enfoque de salud integral).
       4. Sugiere 1 "Hábito Fundamental" (algo sólido pero alcanzable).
       5. Sugiere 1 "Microhábito" (una acción minúscula de menos de 2 minutos que pueda hacer hoy mismo).
       
@@ -94,7 +120,8 @@ export default function App() {
     try {
       if (!apiKey) throw new Error("Falta configurar la Clave de Google AI.");
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      // SOLUCIÓN: Cambiamos al modelo público oficial (gemini-1.5-flash)
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,12 +133,17 @@ export default function App() {
         })
       });
 
-      if (!response.ok) throw new Error('No pudimos conectar con La Brújula. Intenta nuevamente.');
+      if (!response.ok) {
+        // Esto nos mostrará el error real si Google se queja de algo más
+        const errorData = await response.json().catch(() => null);
+        console.error("Error de la API:", errorData);
+        throw new Error(errorData?.error?.message ? `Ups: ${errorData.error.message}` : 'No pudimos conectar con La Brújula. Intenta nuevamente.');
+      }
 
       const data = await response.json();
       const aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       
-      if (!aiResponseText) throw new Error('Recibimos una respuesta vacía.');
+      if (!aiResponseText) throw new Error('Recibimos una respuesta vacía del servidor.');
 
       const parsedResult = JSON.parse(aiResponseText) as ResultData;
       setResult(parsedResult);
@@ -121,7 +153,7 @@ export default function App() {
       if (err instanceof Error) {
         setError(err.message || "Hubo un pequeño error al leer tu brújula.");
       } else {
-        setError("Hubo un pequeño error al leer tu brújula. Por favor, intenta de nuevo en unos momentos.");
+        setError("Hubo un pequeño error de conexión. Verifica tu internet e intenta de nuevo. 🤍");
       }
     } finally {
       setIsLoading(false);
@@ -174,7 +206,7 @@ export default function App() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-center text-sm">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-center text-sm font-medium">
               {error}
             </div>
           )}
@@ -205,17 +237,44 @@ export default function App() {
 
             <hr className="border-[#DBB2B2]/30" />
 
-            <div className="space-y-3">
-              <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-xl font-semibold">
-                <Activity size={20} />
-                <span>Tu Cuerpo <span className="text-gray-500 text-sm font-sans font-normal">(Dimensión Física)</span></span>
-              </label>
-              <p className="text-gray-600 text-sm italic">¿Cómo sientes tu energía, tu alimentación y tu descanso a diario?</p>
-              <textarea 
-                name="fisica" value={formData.fisica} onChange={handleInputChange}
-                className="w-full h-32 p-4 bg-white/50 border border-[#DBB2B2]/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent transition-all resize-none shadow-inner"
-                placeholder="Escribe aquí con total libertad..."
-              />
+            <div className="p-6 bg-[#F9C8C8]/15 rounded-3xl border border-[#F9C8C8]/60 shadow-sm space-y-6">
+              <div className="mb-4">
+                <label className="flex items-center space-x-2 text-[#B76E79] font-serif text-2xl font-semibold">
+                  <Activity size={24} />
+                  <span>Tu Cuerpo <span className="text-gray-500 text-base font-sans font-normal">(Dimensión Física)</span></span>
+                </label>
+                <p className="text-gray-600 text-sm italic mt-2">El cuerpo es tu templo. Vamos a evaluar los 3 pilares críticos que sostienen tu energía vital.</p>
+              </div>
+
+              <div className="space-y-2 bg-white/60 p-4 rounded-2xl border border-white">
+                <p className="text-gray-800 font-semibold text-sm flex items-center gap-2">🍎 1. Alimentación y Metabolismo</p>
+                <p className="text-gray-500 text-xs italic">¿Cómo es tu relación con la comida? ¿Sientes energía constante o picos de cansancio a lo largo del día?</p>
+                <textarea 
+                  name="alimentacion" value={formData.alimentacion} onChange={handleInputChange}
+                  className="w-full h-20 p-3 mt-2 bg-white border border-[#DBB2B2]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent transition-all resize-none text-sm shadow-inner"
+                  placeholder="Ej: Suelo comer a deshoras, me falta energía a la tarde..."
+                />
+              </div>
+
+              <div className="space-y-2 bg-white/60 p-4 rounded-2xl border border-white">
+                <p className="text-gray-800 font-semibold text-sm flex items-center gap-2">💤 2. Descanso y Reparación</p>
+                <p className="text-gray-500 text-xs italic">¿Cuántas horas duermes en promedio? ¿Sientes que tu sueño es verdaderamente profundo y reparador?</p>
+                <textarea 
+                  name="descanso" value={formData.descanso} onChange={handleInputChange}
+                  className="w-full h-20 p-3 mt-2 bg-white border border-[#DBB2B2]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent transition-all resize-none text-sm shadow-inner"
+                  placeholder="Ej: Duermo 6 horas pero me despierto cansada y me cuesta arrancar..."
+                />
+              </div>
+
+              <div className="space-y-2 bg-white/60 p-4 rounded-2xl border border-white">
+                <p className="text-gray-800 font-semibold text-sm flex items-center gap-2">💪 3. Movimiento y Masa Muscular</p>
+                <p className="text-gray-500 text-xs italic">¿Realizas entrenamiento de fuerza? ¿Cómo sientes tus músculos, tu flexibilidad y tu movilidad general?</p>
+                <textarea 
+                  name="ejercicio" value={formData.ejercicio} onChange={handleInputChange}
+                  className="w-full h-20 p-3 mt-2 bg-white border border-[#DBB2B2]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent transition-all resize-none text-sm shadow-inner"
+                  placeholder="Ej: Salgo a caminar a veces, pero no levanto peso ni hago ejercicios de fuerza..."
+                />
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -417,6 +476,18 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <audio ref={audioRef} src={audioUrl} loop />
+      <button
+        onClick={togglePlay}
+        className="fixed bottom-6 right-6 p-4 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-[#F9C8C8] text-[#B76E79] hover:scale-110 hover:bg-[#F9C8C8]/50 transition-all z-50 group flex items-center justify-center no-print"
+        title="Música de Gratia"
+      >
+        {isPlaying ? <Pause size={24} /> : <Music size={24} />}
+        <span className="absolute -top-12 right-0 bg-white px-4 py-2 rounded-xl shadow-lg text-sm text-[#B76E79] font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-[#F9C8C8]/50">
+          {isPlaying ? 'Pausar música' : 'Escuchar a Gratia ✨'}
+        </span>
+      </button>
 
     </div>
   );
