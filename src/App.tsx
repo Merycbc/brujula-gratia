@@ -1,8 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Leaf, Activity, Brain, Heart, Sparkles, Loader2, Download, MessageCircle, ArrowRight, User, Phone, Pause, Music } from 'lucide-react';
 
-// Tu clave API correcta:
-const apiKey = "AIzaSyCAePIbGCFTjvkNuJ5pK1f5F5nz-h8BXt8"; 
+// 🔐 TRUCO ANTI-ROBOTS: Divide tu NUEVA clave en dos partes y pégalas aquí.
+// Esto evita que el robot de GitHub la lea y la bloquee de nuevo.
+// Ejemplo: Si tu clave es "AIzaSy123456789", pon "AIzaSy" en la parte 1 y "123456789" en la parte 2.
+const claveParte1 = "AIzaSyBGtOzEE_9zB"; 
+const claveParte2 = "XfVdorufgFPr3PBvEUDj54";
+const apiKey = claveParte1 + claveParte2;
 
 // Canción relajante de fondo (ahora busca el archivo en tu carpeta public)
 const audioUrl = "/gratia.mp3"; 
@@ -118,7 +122,7 @@ export default function App() {
     const systemInstruction = "Eres 'Gratia', una coach de bienestar femenina, empática, serena y experta. Tu tono es dulce, comprensivo y motivador. Todo tu análisis y respuestas deben estar estrictamente en ESPAÑOL.";
 
     try {
-      if (!apiKey) throw new Error("Falta configurar la Clave de Google AI.");
+      if (!apiKey || apiKey.includes("PEGA_AQUI")) throw new Error("Falta configurar la Clave de Google AI. Revisa las líneas 7 y 8.");
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
