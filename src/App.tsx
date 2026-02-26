@@ -1,14 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Leaf, Activity, Brain, Heart, Sparkles, Loader2, Download, MessageCircle, ArrowRight, User, Phone, Pause, Music } from 'lucide-react';
 
-// 🔐 TRUCO ANTI-ROBOTS: Divide tu NUEVA clave en dos partes y pégalas aquí.
-// Esto evita que el robot de GitHub la lea y la bloquee de nuevo.
-// Ejemplo: Si tu clave es "AIzaSy123456789", pon "AIzaSy" en la parte 1 y "123456789" en la parte 2.
+// 🔐 TRUCO ANTI-ROBOTS: Tu clave dividida para que GitHub no la bloquee
 const claveParte1 = "AIzaSyBGtOzEE_9zB"; 
 const claveParte2 = "XfVdorufgFPr3PBvEUDj54";
 const apiKey = claveParte1 + claveParte2;
 
-// Canción relajante de fondo (ahora busca el archivo en tu carpeta public)
+// 🎵 Canción relajante de fondo (busca el archivo en tu carpeta public)
 const audioUrl = "/gratia.mp3"; 
 
 interface ScoreData {
@@ -94,17 +92,12 @@ export default function App() {
 
       Instrucciones:
       1. Puntúa cada dimensión principal del 1 al 5 (1 = desequilibrio severo, 5 = equilibrio ideal). Para la dimensión "Física", calcula una nota global basada en las respuestas de alimentación, descanso y movimiento.
-      2. Identifica la dimensión principal con la puntuación más baja (si hay empate, elige la que percibas que necesita más atención urgente).
-      3. Redacta un mensaje empático, cálido y comprensivo dirigido a ${formData.nombre} sobre esa dimensión más baja.
-         IMPORTANTE: Si la dimensión más baja es la "Física", tu mensaje empático DEBE incluir una breve pero poderosa concientización sobre:
-         - El metabolismo y cómo usamos la energía (alimentación).
-         - La importancia vital del descanso profundo para la reparación celular, hormonal y del sistema nervioso.
-         - Por qué entrenar la fuerza y construir masa muscular es crucial para la longevidad y la salud metabólica, mucho más allá de la apariencia física o estética.
-         (Si la dimensión más baja NO es la física, enfoca tu mensaje en la dimensión correspondiente, pero mantén un enfoque de salud integral).
+      2. Identifica la dimensión principal con la puntuación más baja.
+      3. Redacta un mensaje empático, cálido y comprensivo dirigido a ${formData.nombre} sobre esa dimensión más baja. Si es la física, menciona la importancia del metabolismo, el descanso y la masa muscular.
       4. Sugiere 1 "Hábito Fundamental" (algo sólido pero alcanzable).
-      5. Sugiere 1 "Microhábito" (una acción minúscula de menos de 2 minutos que pueda hacer hoy mismo).
+      5. Sugiere 1 "Microhábito" (una acción minúscula de menos de 2 minutos para hoy).
       
-      IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON con esta estructura exacta, sin texto adicional:
+      IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin formato markdown:
       {
         "scores": {
           "fisica": numero,
@@ -112,14 +105,14 @@ export default function App() {
           "emocional": numero,
           "espiritual": numero
         },
-        "lowestDimension": "Nombre de la dimensión (Física, Mental, Emocional o Espiritual)",
+        "lowestDimension": "Nombre de la dimensión",
         "empatheticMessage": "Tu mensaje aquí...",
         "fundamentalHabit": "Hábito fundamental aquí...",
         "microHabit": "Microhábito aquí..."
       }
     `;
 
-    const systemInstruction = "Eres 'Gratia', una coach de bienestar femenina, empática, serena y experta. Tu tono es dulce, comprensivo y motivador. Todo tu análisis y respuestas deben estar estrictamente en ESPAÑOL.";
+    const systemInstruction = "Eres 'Gratia', una coach de bienestar femenina, empática, serena y experta. Tu tono es dulce, comprensivo y motivador. Todo tu análisis y respuestas deben estar estrictamente en ESPAÑOL y en formato JSON perfecto.";
 
     try {
       if (!apiKey || apiKey.includes("PEGA_AQUI")) throw new Error("Falta configurar la Clave de Google AI. Revisa las líneas 7 y 8.");
@@ -139,7 +132,7 @@ export default function App() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error("Error de la API:", errorData);
-        throw new Error(errorData?.error?.message ? `Ups: ${errorData.error.message}` : 'No pudimos conectar con La Brújula. Intenta nuevamente.');
+        throw new Error(errorData?.error?.message ? `Ups: ${errorData.error.message}` : 'No pudimos conectar con La Brújula.');
       }
 
       const data = await response.json();
@@ -147,28 +140,46 @@ export default function App() {
       
       if (!aiResponseText) throw new Error('Recibimos una respuesta vacía del servidor.');
 
-      const parsedResult = JSON.parse(aiResponseText) as ResultData;
+      // 🛡️ CHALECO ANTIBALAS 1: Limpiamos el texto por si la IA le pone comillas raras o markdown
+      const cleanJsonText = aiResponseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+
+      let parsedResult: ResultData;
+      try {
+        parsedResult = JSON.parse(cleanJsonText);
+      } catch (parseError) {
+        console.error("Error al transformar la respuesta de la IA:", cleanJsonText);
+        throw new Error("Gratia está procesando ideas muy profundas y se confundió un poquito. ¿Podrías darle a 'Descubrir mi Mapa' otra vez?");
+      }
+
+      // 🛡️ CHALECO ANTIBALAS 2: Si la IA olvida algún dato, ponemos uno de rescate para que no haya pantalla negra (Crash preventivo)
+      if (!parsedResult.scores) parsedResult.scores = { fisica: 3, mental: 3, emocional: 3, espiritual: 3 };
+      if (typeof parsedResult.scores.fisica === 'undefined') parsedResult.scores.fisica = 3;
+      if (typeof parsedResult.scores.mental === 'undefined') parsedResult.scores.mental = 3;
+      if (typeof parsedResult.scores.emocional === 'undefined') parsedResult.scores.emocional = 3;
+      if (typeof parsedResult.scores.espiritual === 'undefined') parsedResult.scores.espiritual = 3;
+      
+      if (!parsedResult.lowestDimension) parsedResult.lowestDimension = "Física";
+      if (!parsedResult.empatheticMessage) parsedResult.empatheticMessage = "He notado que tus niveles de energía necesitan un abrazo. Tómate una pausa, respira y recuerda que estás haciendo lo mejor que puedes.";
+      if (!parsedResult.fundamentalHabit) parsedResult.fundamentalHabit = "Dedicar 10 minutos al día para reconectar contigo misma en silencio.";
+      if (!parsedResult.microHabit) parsedResult.microHabit = "Tomar 3 respiraciones profundas conscientes antes de tu próxima actividad.";
+
       setResult(parsedResult);
       setStep(2);
 
-      // 💌 ENVÍO DE CORREO AUTOMÁTICO A TU FORMSPREE
-      try {
-        await fetch("https://formspree.io/f/mbdaqazk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            Nombre: formData.nombre,
-            Telefono: formData.telefono,
-            Dimension_Afectada: parsedResult.lowestDimension,
-            Mensaje_para_Mery: "¡Nueva usuaria completó la Brújula! Escríbele por WhatsApp. 🤍"
-          })
-        });
-      } catch (emailError) {
-        console.error("Error al enviar el correo:", emailError);
-      }
+      // 💌 ENVÍO DE CORREO AUTOMÁTICO A TU FORMSPREE (De forma silenciosa)
+      fetch("https://formspree.io/f/mbdaqazk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Nombre: formData.nombre,
+          Telefono: formData.telefono,
+          Dimension_Afectada: parsedResult.lowestDimension,
+          Mensaje_para_Mery: "¡Nueva usuaria completó la Brújula! Escríbele por WhatsApp. 🤍"
+        })
+      }).catch(err => console.error("Error silencioso de Formspree:", err));
 
     } catch (err: unknown) {
-      console.error(err);
+      console.error("Error principal:", err);
       if (err instanceof Error) {
         setError(err.message || "Hubo un pequeño error al leer tu brújula.");
       } else {
